@@ -1,5 +1,5 @@
-const https = require('https');
-const http = require('http');
+const https = require('node:https');
+const http = require('node:http');
 
 const METADATA_TOKEN_URL =
   'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
@@ -42,13 +42,11 @@ async function fetchServices(token, projectId, region) {
 }
 
 function resolveStatus(conditions = []) {
-  const ready = conditions.find((c) => c.type === 'Ready');
-  if (!ready) return 'unknown';
-  switch (ready.state) {
-    case 'CONDITION_SUCCEEDED': return 'running';
-    case 'CONDITION_FAILED': return 'inactive';
-    default: return 'unknown';
-  }
+  if (!conditions.length) return 'unknown';
+  const failed = conditions.some((c) => c.state === 'CONDITION_FAILED');
+  if (failed) return 'inactive';
+  const allOk = conditions.every((c) => c.state === 'CONDITION_SUCCEEDED');
+  return allOk ? 'running' : 'unknown';
 }
 
 function toServiceStatus(svc) {
@@ -57,9 +55,10 @@ function toServiceStatus(svc) {
   const status = resolveStatus(svc.conditions);
   const scaling = svc.scaling || {};
   const latestFull = svc.latestReadyRevision || null;
-  const lastRevision = latestFull
-    ? (latestFull.includes('/') ? latestFull.split('/').pop() : latestFull)
-    : null;
+  let lastRevision = null;
+  if (latestFull) {
+    lastRevision = latestFull.includes('/') ? latestFull.split('/').pop() : latestFull;
+  }
 
   return {
     name,
