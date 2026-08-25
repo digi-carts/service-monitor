@@ -29,8 +29,10 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Deploy to Cloud Run (prod)
         run: |
-          gcloud run services update ${{ env.SERVICE }} \
+          gcloud run deploy ${{ env.SERVICE }} \
             --region ${{ env.REGION }} \
             --image ${{ env.IMAGE }}:${{ github.ref_name }} \
             --set-env-vars "GCP_PROJECT_ID=digi-carts,GCP_REGION=us-east1" \
+            --no-allow-unauthenticated \
+            --port 3010 \
             --quiet
